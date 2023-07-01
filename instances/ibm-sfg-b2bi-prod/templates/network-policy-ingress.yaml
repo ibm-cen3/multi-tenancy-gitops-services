@@ -1,4 +1,21 @@
 # (C) Copyright 2019-2022 Syncsort Incorporated. All rights reserved.
+{{ if (.Values.global.networkPolicies.ingress.enabled) }}
+{{- include "sch.config.init" (list . "b2bi.sch.chart.config.values") }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ include "sch.names.fullCompName" (list . .sch.chart.components.networkPolicies.ingressDenyAll.name) | quote }}
+  labels:
+{{ include "sch.metadata.labels.standard" (list . .sch.chart.components.networkPolicies.ingressDenyAll.name) | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .sch.chart.appName }}
+      release: {{ .Release.Name }}
+  ingress: []
+  policyTypes:
+  - Ingress
+---
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -80,4 +97,60 @@ spec:
     {{- end }}
   policyTypes:
   - Ingress
+---  
+{{- $customPolicies := dict -}}
+{{- if (.Values.global.networkPolicies.ingress.customPolicies) }}
+{{- $_ := set $customPolicies "global" .Values.global.networkPolicies.ingress.customPolicies }}
+{{- end }} 
 
+{{ if (.Values.asi.networkPolicies.ingress.customPolicies) }}
+{{- $_ := set $customPolicies "asi" .Values.asi.networkPolicies.ingress.customPolicies }}
+{{- end }} 
+
+{{ if (.Values.ac.networkPolicies.ingress.customPolicies) }}
+{{- $_ := set $customPolicies "ac" .Values.ac.networkPolicies.ingress.customPolicies }}
+{{- end }} 
+
+{{ if (.Values.api.networkPolicies.ingress.customPolicies) }}
+{{- $_ := set $customPolicies "api" .Values.api.networkPolicies.ingress.customPolicies -}}
+{{- end }} 
+
+{{ if ($customPolicies) }}
+{{ range $componentName := keys $customPolicies -}}
+{{ range $i, $networkPolicy := get $customPolicies $componentName -}}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ include "sch.names.fullCompName" (list $ $networkPolicy.name) | quote }}
+  labels:
+{{ include "sch.metadata.labels.standard" (list $ $networkPolicy.name) | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $.sch.chart.appName }}
+      release: {{ $.Release.Name }}
+      {{ if ($networkPolicy.component) }}
+      app.kubernetes.io/component: {{ $networkPolicy.component }}
+      {{- end }}
+  ingress:
+  - 
+    {{- if $networkPolicy.fromSelectors }}    
+    from:    
+    {{- with $networkPolicy.fromSelectors }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }} 
+    {{- end }}     
+    {{- if $networkPolicy.ports }}
+    ports:
+    {{- with $networkPolicy.ports }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}     
+    {{- end }}
+  policyTypes:
+  - Ingress
+---  
+{{- end }}
+{{- end }} 
+{{- end }} 
+
+{{- end }}
