@@ -1,0 +1,18 @@
+# (C) Copyright 2019-2022 Syncsort Incorporated. All rights reserved.
+
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ include "sch.names.fullCompName" (list . .sch.chart.components.networkPolicies.egressAllowNs.name) | quote }}
+  labels:
+{{ include "sch.metadata.labels.standard" (list . .sch.chart.components.networkPolicies.egressAllowNs.name) | indent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .sch.chart.appName }}
+      release: {{ .Release.Name }}
+  egress:
+  - to:
+    - namespaceSelector: {}   
+  policyTypes:
+  - Egress
